@@ -15,7 +15,7 @@
 
 ## v0.5.2
 
-* Fix some TCP error handling during the connection setup phase.
+* Fix some SSL error handling during the connection setup phase.
 
 ## v0.5.1
 

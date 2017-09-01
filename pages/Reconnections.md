@@ -26,9 +26,9 @@ and `backoff_initial: 5_000`, attempts will be made regularly every 5 seconds.
 ## Synchronous or asynchronous connection
 
 The `:sync_connect` option passed to `Redix.start_link/2` decides whether Redix
-should initiate the TCP connection to the Redis server *before* or *after*
+should initiate the SSL connection to the Redis server *before* or *after*
 `Redix.start_link/2` returns. This option also changes the behaviour of Redix
-when the TCP connection can't be initiated at all.
+when the SSL connection can't be initiated at all.
 
 When `:sync_connect` is `false`, then a failed attempt to initially connect to
 the Redis server is treated exactly as a disconnection: attempts to reconnect
@@ -43,7 +43,7 @@ Redix is a vital part of your application: for example, this should be used if
 you plan to use a Redix process under your application's supervision tree,
 placed *before* the parts of your application that depend on it in the tree (so
 that this way, the application won't be started until a connection to Redis has
-been established). With `sync_connect: true`, disconnections after the TCP
+been established). With `sync_connect: true`, disconnections after the SSL
 connection has been established will behave exactly as above (with reconnection
 attempts at given intervals) and your application should still handle the
 possibility of Redis being down. If your application can't function properly

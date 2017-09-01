@@ -5,7 +5,7 @@ defmodule Redix do
   ## Overview
 
   `start_link/2` starts a process that connects to Redis. Each Elixir process
-  started with this function maps to a client TCP connection to the specified
+  started with this function maps to a client SSL connection to the specified
   Redis server.
 
   The architecture is very simple: when you issue commands to Redis (via
@@ -67,7 +67,7 @@ defmodule Redix do
   This function returns `{:ok, pid}` if the Redix process is started
   successfully.
 
-  The actual TCP connection to the Redis server may happen either synchronously,
+  The actual SSL connection to the Redis server may happen either synchronously,
   before `start_link/2` returns, or asynchronously: this behaviour is decided by
   the `:sync_connect` option (see below).
 
@@ -123,10 +123,10 @@ defmodule Redix do
   are the Redix-specific options that can be used:
 
     * `:socket_opts` - (list of options) this option specifies a list of options
-      that are passed to `:gen_tcp.connect/4` when connecting to the Redis
+      that are passed to `:ssl.connect/4` when connecting to the Redis
       server. Some socket options (like `:active` or `:binary`) will be
       overridden by Redix so that it functions properly. Defaults to `[]`.
-    * `:sync_connect` - (boolean) decides whether Redix should initiate the TCP
+    * `:sync_connect` - (boolean) decides whether Redix should initiate the SSL
       connection to the Redis server *before* or *after* returning from
       `start_link/2`. This option also changes some reconnection semantics; read
       the "Reconnections" page in the docs.

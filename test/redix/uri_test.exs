@@ -5,7 +5,7 @@ defmodule Redix.URITest do
   alias Redix.URI.URIError
 
   test "opts_from_uri/1: invalid scheme" do
-    message = "expected scheme to be redis://, got: foo://"
+    message = "expected scheme to be redis:// or rediss://, got: foo://"
     assert_raise URIError, message, fn ->
       opts_from_uri("foo://example.com")
     end
@@ -13,6 +13,14 @@ defmodule Redix.URITest do
 
   test "opts_from_uri/1: just the host" do
     opts = opts_from_uri("redis://example.com")
+    assert opts[:host] == "example.com"
+    assert is_nil(opts[:port])
+    assert is_nil(opts[:database])
+    assert is_nil(opts[:password])
+  end
+
+  test "opts_from_uri/1: secure redis scheme" do
+    opts = opts_from_uri("rediss://example.com")
     assert opts[:host] == "example.com"
     assert is_nil(opts[:port])
     assert is_nil(opts[:database])

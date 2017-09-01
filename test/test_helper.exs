@@ -7,16 +7,23 @@ end
 host = System.get_env("REDIX_TEST_HOST") || "localhost"
 port = String.to_integer(System.get_env("REDIX_TEST_PORT") || "6379")
 
-case :gen_tcp.connect(String.to_charlist(host), port, []) do
+socket_opts = [
+  cacertfile: System.get_env("REDIX_TEST_CA_CERT_FILE"),
+  certfile: System.get_env("REDIX_TEST_CERT_FILE"),
+  keyfile: System.get_env("REDIX_TEST_KEY_FILE")
+]
+
+case :ssl.connect(String.to_charlist(host), port, socket_opts) do
   {:ok, socket} ->
-    :gen_tcp.close(socket)
+    :ssl.close(socket)
   {:error, reason} ->
-    Mix.raise "Cannot connect to Redis (http://#{host}:#{port}): #{:inet.format_error(reason)}"
+    Mix.raise "Cannot connect to Redis (http://#{host}:#{port}): #{:ssl.format_error(reason)}"
 end
 
 defmodule Redix.TestHelpers do
   def test_host(), do: unquote(host)
   def test_port(), do: unquote(port)
+  def test_socket_opts(), do: unquote(socket_opts)
 
   def parse_with_continuations(data, parser_fun \\ &Redix.Protocol.parse/1)
 

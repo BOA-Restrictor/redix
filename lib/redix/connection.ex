@@ -14,7 +14,7 @@ defmodule Redix.Connection do
   @type state :: %__MODULE__{}
 
   defstruct [
-    # The TCP socket that holds the connection to Redis
+    # The SSL socket that holds the connection to Redis
     socket: nil,
     # Options passed when the connection is started
     opts: nil,
@@ -144,14 +144,14 @@ defmodule Redix.Connection do
       "Disconnected from Redis (", Utils.format_host(state), "): ", Exception.message(error),
     ])
 
-    :ok = :gen_tcp.close(state.socket)
+    :ok = :ssl.close(state.socket)
 
     # state.receiver may be nil if we already processed the message where it
-    # notifies us it stopped. If it's not nil, it means we noticed the TCP error
+    # notifies us it stopped. If it's not nil, it means we noticed the SSL error
     # when sending data through the socket; in that case, we stop it manually
     # (with cast, so that if the receiver already died we don't error out),
     # flush all messages coming from it (because it may still have noticed the
-    # TCP failure and notified us), and remove it from the state.
+    # SSL failure and notified us), and remove it from the state.
     state =
       if state.receiver do
         :ok = Receiver.stop(state.receiver)
@@ -187,7 +187,7 @@ defmodule Redix.Connection do
     :ok = SharedState.enqueue(state.shared_state, {:commands, request_id, from, length(commands)})
 
     data = Enum.map(commands, &Protocol.pack/1)
-    case :gen_tcp.send(state.socket, data) do
+    case :ssl.send(state.socket, data) do
       :ok ->
         {:noreply, state}
       {:error, reason} ->
@@ -219,12 +219,12 @@ defmodule Redix.Connection do
   # because if we're receiving this message, it means the receiver died
   # peacefully by itself (so we don't want to communicate with it anymore, in
   # any way, before reconnecting and restarting it).
-  def handle_info({:receiver, pid, {:tcp_closed, socket}}, %{receiver: pid, socket: socket} = state) do
+  def handle_info({:receiver, pid, {:ssl_closed, socket}}, %{receiver: pid, socket: socket} = state) do
     state = %{state | receiver: nil}
-    {:disconnect, {:error, %ConnectionError{reason: :tcp_closed}}, state}
+    {:disconnect, {:error, %ConnectionError{reason: :ssl_closed}}, state}
   end
 
-  def handle_info({:receiver, pid, {:tcp_error, socket, reason}}, %{receiver: pid, socket: socket} = state) do
+  def handle_info({:receiver, pid, {:ssl_error, socket, reason}}, %{receiver: pid, socket: socket} = state) do
     state = %{state | receiver: nil}
     {:disconnect, {:error, %ConnectionError{reason: reason}}, state}
   end
@@ -258,11 +258,11 @@ defmodule Redix.Connection do
   defp start_receiver_and_hand_socket(socket, shared_state) do
     {:ok, receiver} = Receiver.start_link(sender: self(), socket: socket, shared_state: shared_state)
 
-    with :ok <- :gen_tcp.controlling_process(socket, receiver),
+    with :ok <- :ssl.controlling_process(socket, receiver),
          # We activate the socket after transferring control to the receiver
-         # process, so that we don't get any :tcp_closed messages before
+         # process, so that we don't get any :ssl_closed messages before
          # transferring control.
-         :ok <- :inet.setopts(socket, active: :once),
+         :ok <- :ssl.setopts(socket, active: :once),
          do: {:ok, receiver}
   end
 

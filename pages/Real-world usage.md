@@ -7,14 +7,14 @@ There's a tendency to use pooling when using Redix (through something like
 pool is configurable), but it doesn't really take advantage of Redix.
 
 Redix is built to handle multiple Elixir processes sending commands to Redis
-through it at the same time. It takes advantage of TCP being a **full-duplex**
+through it at the same time. It takes advantage of SSL being a **full-duplex**
 protocol (bytes are sent in both directions, often at the same time) so that the
-TCP stream has bytes flowing in both directions (to and from Redis). For
+SSL stream has bytes flowing in both directions (to and from Redis). For
 example, if two Elixir processes send a `PING` command to Redis via
 `Redix.command/2`, Redix will send both commands to Redis but will concurrently
 start listening for the reply to these commands; at a given point, both a `PING`
 command as well as the `PONG` response to a previous `PING` could be flowing in
-the TCP stream of the socket that Redix is using.
+the SSL stream of the socket that Redix is using.
 
 When pooling with something like `:poolboy`, the pattern is to have a pool of
 Redixes that can be checked out and back in from the pool when needed:

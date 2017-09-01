@@ -22,7 +22,7 @@ defmodule Redix.Protocol do
   Packs a list of Elixir terms to a Redis (RESP) array.
 
   This function returns an iodata (instead of a binary) because the packed
-  result is usually sent to Redis through `:gen_tcp.send/2` or similar. It can
+  result is usually sent to Redis through `:ssl.send/2` or similar. It can
   be converted to a binary with `IO.iodata_to_binary/1`.
 
   All elements of `elems` are converted to strings with `to_string/1`, hence

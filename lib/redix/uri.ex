@@ -10,32 +10,26 @@ defmodule Redix.URI do
 
   @spec opts_from_uri(binary) :: Keyword.t
   def opts_from_uri(uri) when is_binary(uri) do
-    %URI{host: host, port: port, scheme: scheme} = uri = URI.parse(uri)
+    %URI{host: host, port: port, scheme: scheme, userinfo: userinfo, path: path} = URI.parse(uri)
 
-    unless scheme == "redis" do
-      raise URIError, message: "expected scheme to be redis://, got: #{scheme}://"
+    unless scheme == "redis" || scheme == "rediss" do
+      raise URIError, message: "expected scheme to be redis:// or rediss://, got: #{scheme}://"
     end
 
     reject_nils([
       host: host,
       port: port,
-      password: password(uri),
-      database: database(uri),
+      password: password(userinfo),
+      database: database(path),
     ])
   end
 
-  defp password(%URI{userinfo: nil}) do
-    nil
-  end
+  defp password(nil), do: nil
+  defp password(userinfo), do: userinfo |> String.split(":", parts: 2) |> List.last
 
-  defp password(%URI{userinfo: userinfo}) do
-    [_user, password] = String.split(userinfo, ":", parts: 2)
-    password
-  end
-
-  defp database(%URI{path: nil}), do: nil
-  defp database(%URI{path: "/"}), do: nil
-  defp database(%URI{path: "/" <> db}), do: String.to_integer(db)
+  defp database(nil), do: nil
+  defp database("/"), do: nil
+  defp database("/" <> db), do: String.to_integer(db)
 
   defp reject_nils(opts) when is_list(opts) do
     Enum.reject(opts, &match?({_, nil}, &1))
