@@ -11,7 +11,7 @@ defmodule Redix.Connection.Receiver do
   defstruct [
     # The process that sends stuff to the socket and that spawns this process
     sender: nil,
-    # The TCP socket, which should be passive when given to this process
+    # The SSL socket, which should be passive when given to this process
     socket: nil,
     # The parsing continuation returned by Redix.Protocol
     continuation: nil,
@@ -49,19 +49,19 @@ defmodule Redix.Connection.Receiver do
   end
 
   @doc false
-  def handle_info({:tcp, socket, data}, %{socket: socket} = state) do
-    :ok = :inet.setopts(socket, active: :once)
+  def handle_info({:ssl, socket, data}, %{socket: socket} = state) do
+    :ssl.setopts(socket, active: :once)
 
     state = new_data(state, data)
 
     {:noreply, state}
   end
 
-  def handle_info({:tcp_closed, socket} = msg, %{socket: socket} = state) do
+  def handle_info({:ssl_closed, socket} = msg, %{socket: socket} = state) do
     disconnect(msg, state)
   end
 
-  def handle_info({:tcp_error, socket, _reason} = msg, %{socket: socket} = state) do
+  def handle_info({:ssl_error, socket, _reason} = msg, %{socket: socket} = state) do
     disconnect(msg, state)
   end
 

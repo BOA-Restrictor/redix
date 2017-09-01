@@ -25,7 +25,7 @@ defmodule Redix.ConnectionError do
 
     * `:reason` - (atom) the error reason. It can be one of the Redix-specific
       reasons described in the "Error reasons" section below, or any error
-      reason returned by functions in the `:gen_tcp` module (see the
+      reason returned by functions in the `:ssl` module (see the
       [`:inet.posix/0](http://www.erlang.org/doc/man/inet.html#type-posix) type.
 
   ## Error reasons
@@ -52,9 +52,9 @@ defmodule Redix.ConnectionError do
   @spec format_reason(term) :: binary
   def format_reason(reason)
 
-  # :inet.format_error/1 doesn't format :tcp_closed.
-  def format_reason(:tcp_closed) do
-    "TCP connection closed"
+  # :ssl.format_error/1 doesn't format :ssl_closed.
+  def format_reason(:ssl_closed) do
+    "SSL connection closed"
   end
 
   # Manually returned by us when the connection is closed and someone tries to
@@ -64,7 +64,7 @@ defmodule Redix.ConnectionError do
   end
 
   def format_reason(reason) do
-    case :inet.format_error(reason) do
+    case :ssl.format_error(reason) do
       'unknown POSIX error' ->
         inspect(reason)
       message ->

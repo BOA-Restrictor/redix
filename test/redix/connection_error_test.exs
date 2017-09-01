@@ -10,6 +10,6 @@ defmodule Redix.ConnectionErrorTest do
 
   test "Exception.message/1 with an unknown reason" do
     assert Exception.message(%ConnectionError{reason: :unknown}) ==
-           ":unknown"
+           "Unexpected error: unknown"
   end
 end

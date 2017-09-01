@@ -9,9 +9,10 @@ defmodule RedixTest do
 
   @host TestHelpers.test_host()
   @port TestHelpers.test_port()
+  @socket_opts TestHelpers.test_socket_opts()
 
   setup_all do
-    {:ok, conn} = Redix.start_link(host: @host, port: @port)
+    {:ok, conn} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
     Redix.command!(conn, ["FLUSHDB"])
     Redix.stop(conn)
     :ok
@@ -21,26 +22,16 @@ defmodule RedixTest do
     if context[:no_setup] do
       {:ok, %{}}
     else
-      {:ok, conn} = Redix.start_link(host: @host, port: @port)
+      {:ok, conn} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
       {:ok, %{conn: conn}}
     end
-  end
-
-  @tag :no_setup
-  test "start_link/2: specifying a database" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port, database: 1)
-    assert Redix.command(c, ~w(SET my_key my_value)) == {:ok, "OK"}
-
-    # Let's check we didn't write to the default database (which is 0).
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
-    assert Redix.command(c, ~w(GET my_key)) == {:ok, nil}
   end
 
   @tag :no_setup
   test "start_link/2: specifying a non existing database" do
     capture_log fn ->
       Process.flag :trap_exit, true
-      {:ok, pid} = Redix.start_link(host: @host, port: @port, database: 1_000)
+      {:ok, pid} = Redix.start_link([host: @host, port: @port, database: 1_000], socket_opts: @socket_opts)
 
       assert_receive {:EXIT, ^pid, %Error{message: message}}, 500
       assert message in ["ERR invalid DB index", "ERR DB index is out of range"]
@@ -51,7 +42,7 @@ defmodule RedixTest do
   test "start_link/2: specifying a password when no password is set" do
     capture_log fn ->
       Process.flag :trap_exit, true
-      {:ok, pid} = Redix.start_link(host: @host, port: @port, password: "foo")
+      {:ok, pid} = Redix.start_link([host: @host, port: @port, password: "foo"], socket_opts: @socket_opts)
 
       error = %Error{message: "ERR Client sent AUTH, but no password is set"}
       assert_receive {:EXIT, ^pid, ^error}, 500
@@ -80,26 +71,26 @@ defmodule RedixTest do
 
   @tag :no_setup
   test "start_link/2: using a redis:// url" do
-    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}/3")
+    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}", socket_opts: @socket_opts)
     assert Redix.command(pid, ["PING"]) == {:ok, "PONG"}
   end
 
   @tag :no_setup
   test "start_link/2: name registration" do
-    {:ok, pid} = Redix.start_link([host: @host, port: @port], name: :redix_server)
+    {:ok, pid} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts, name: :redix_server)
     assert Process.whereis(:redix_server) == pid
     assert Redix.command(:redix_server, ["PING"]) == {:ok, "PONG"}
   end
 
   @tag :no_setup
   test "start_link/2: passing options along with a Redis URI" do
-    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}", name: :redix_uri)
+    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}", socket_opts: @socket_opts, name: :redix_uri)
     assert Process.whereis(:redix_uri) == pid
   end
 
   @tag :no_setup
   test "stop/1" do
-    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}/3")
+    {:ok, pid} = Redix.start_link("redis://#{@host}:#{@port}", socket_opts: @socket_opts)
     ref = Process.monitor(pid)
     assert Redix.stop(pid) == :ok
 
@@ -109,7 +100,7 @@ defmodule RedixTest do
   @tag :no_setup
   test "the :log option given to start_link/2 must be a list" do
     assert_raise ArgumentError, ~r/the :log option must be a keyword list/, fn ->
-      Redix.start_link([host: @host, port: @port], log: :not_a_list)
+      Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts, log: :not_a_list)
     end
   end
 
@@ -192,7 +183,7 @@ defmodule RedixTest do
     assert Redix.pipeline(c, commands) == {:ok, ["OK", 11, "11"]}
   end
 
-  test "pipeline/2: a lot of commands so that TCP gets stressed", %{conn: c} do
+  test "pipeline/2: a lot of commands so that SSL gets stressed", %{conn: c} do
     assert {:ok, "OK"} = Redix.command(c, ~w(SET stress_pipeline foo))
 
     ncommands = 10_000
@@ -270,7 +261,7 @@ defmodule RedixTest do
   end
 
   test "command!/2: connection errors", %{conn: c} do
-    assert_raise Redix.ConnectionError, ":timeout", fn ->
+    assert_raise Redix.ConnectionError, "Unexpected error: timeout", fn ->
       Redix.command!(c, ["PING"], timeout: 0)
     end
   end
@@ -287,14 +278,14 @@ defmodule RedixTest do
   end
 
   test "pipeline!/2: connection errors", %{conn: c} do
-    assert_raise Redix.ConnectionError, ":timeout", fn ->
+    assert_raise Redix.ConnectionError, "Unexpected error: timeout", fn ->
       Redix.pipeline!(c, [["PING"]], timeout: 0)
     end
   end
 
   @tag :no_setup
   test "client suicide and reconnections" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
 
     capture_log fn ->
       assert {:ok, _} = Redix.command(c, ~w(QUIT))
@@ -314,7 +305,7 @@ defmodule RedixTest do
 
   @tag :no_setup
   test "timeouts" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
 
     assert {:error, %ConnectionError{reason: :timeout}} = Redix.command(c, ~w(PING), timeout: 0)
 
@@ -325,7 +316,7 @@ defmodule RedixTest do
 
   @tag :no_setup
   test "mid-command disconnections" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
 
     capture_log fn ->
       {_pid, ref} = Process.spawn(fn ->
@@ -341,7 +332,7 @@ defmodule RedixTest do
 
   @tag :no_setup
   test "timing out right after the connection drops" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
     capture_log fn ->
       Redix.command!(c, ~w(QUIT))
       assert Redix.command(c, ~w(PING), timeout: 0) == {:error, %ConnectionError{reason: :timeout}}
@@ -351,7 +342,7 @@ defmodule RedixTest do
 
   @tag :no_setup
   test "no leaking messages when timeout happen at the same time as disconnections" do
-    {:ok, c} = Redix.start_link(host: @host, port: @port)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts)
 
     capture_log fn ->
       {_pid, ref} = Process.spawn(fn ->
@@ -369,12 +360,12 @@ defmodule RedixTest do
 
   @tag :no_setup
   test ":exit_on_disconnection option" do
-    {:ok, c} = Redix.start_link([host: @host, port: @port], exit_on_disconnection: true)
+    {:ok, c} = Redix.start_link([host: @host, port: @port], socket_opts: @socket_opts, exit_on_disconnection: true)
     Process.flag(:trap_exit, true)
 
     capture_log fn ->
       Redix.command!(c, ~w(QUIT))
-      assert_receive {:EXIT, ^c, %ConnectionError{reason: :tcp_closed}}
+      assert_receive {:EXIT, ^c, %ConnectionError{reason: :ssl_closed}}
     end
   end
 
